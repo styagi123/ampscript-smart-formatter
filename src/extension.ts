@@ -56,7 +56,7 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   /**
-   * 🔥 SIMPLE & RELIABLE COMPLETION
+   * 🔥 COMPLETION (FIXED VARIABLE LOGIC ONLY)
    */
   context.subscriptions.push(
     vscode.languages.registerCompletionItemProvider(
@@ -69,7 +69,7 @@ export function activate(context: vscode.ExtensionContext) {
 
           const items: vscode.CompletionItem[] = [];
 
-          // ✅ BLOCK: %% (triggered by %) - only when exactly one %
+          // ✅ BLOCK: %%
           const lastChar = textBeforeCursor.slice(-1);
           const lastTwo = textBeforeCursor.slice(-2);
           if (lastChar === '%' && lastTwo !== '%%') {
@@ -79,10 +79,9 @@ export function activate(context: vscode.ExtensionContext) {
             items.push(item);
           }
 
-          // ✅ BLOCK: %%[ (triggered by [ - VS Code auto-closes to %%[])
+          // ✅ BLOCK: %%[
           if (textBeforeCursor.endsWith('%%[]')) {
             const item = new vscode.CompletionItem('AMP Block', vscode.CompletionItemKind.Snippet);
-            // Replace the auto-closed [] with proper block
             item.insertText = new vscode.SnippetString('\n  $1\n]%%');
             item.range = new vscode.Range(
               new vscode.Position(position.line, position.character - 2),
@@ -91,7 +90,7 @@ export function activate(context: vscode.ExtensionContext) {
             items.push(item);
           }
 
-          // ✅ INLINE: %%= (triggered by %)
+          // ✅ INLINE: %%=
           if (textBeforeCursor.endsWith('%%=')) {
             const item = new vscode.CompletionItem('v() output', vscode.CompletionItemKind.Snippet);
             item.insertText = new vscode.SnippetString('v(${1:varName})=%%');
@@ -109,7 +108,36 @@ export function activate(context: vscode.ExtensionContext) {
           // ✅ Only inside AMPscript → functions + variables
           if (isInsideAmpScript(document, position)) {
 
-            // AMPscript functions with signatures
+            const fullText = document.getText();
+            const declaredVars = fullText.match(/(?:SET|VAR)\s+(@\w+)/gi) || [];
+
+            const uniqueVarNames = [...new Set(
+              declaredVars.map(v => v.replace(/^(SET|VAR)\s+/i, '').substring(1))
+            )];
+
+            /**
+             * 🔥 FIXED LOGIC (IMPORTANT)
+             * Detect only when cursor is after @ or typing variable
+             */
+            const atMatch = textBeforeCursor.match(/@(\w*)$/);
+            const textAfterAt = atMatch ? atMatch[1] : '';
+
+            if (atMatch) {
+              uniqueVarNames.forEach(varName => {
+                if (
+                  textAfterAt === '' ||
+                  varName.toLowerCase().startsWith(textAfterAt.toLowerCase())
+                ) {
+                  const item = new vscode.CompletionItem('@' + varName, vscode.CompletionItemKind.Variable);
+                  item.insertText = varName; // keeps @ already typed
+                  items.push(item);
+                }
+              });
+
+              return items; // stop other suggestions
+            }
+
+            // FUNCTIONS (unchanged)
             const functions = [
               { name: 'v', snippet: 'v($1)', desc: 'Output variable value' },
               { name: 'Lookup', snippet: 'Lookup(${1:DataExtension}, ${2:Column}, ${3:SearchColumn}, ${4:SearchValue})', desc: 'Lookup value in Data Extension' },
@@ -124,44 +152,34 @@ export function activate(context: vscode.ExtensionContext) {
               { name: 'RedirectTo', snippet: 'RedirectTo(${1:url})', desc: 'Redirect to URL' },
               { name: 'RaiseError', snippet: 'RaiseError(${1:errorMessage}, ${2:addToError})', desc: 'Raise error' },
               { name: 'Set', snippet: 'Set(@${1:varName}, ${2:value})', desc: 'Set variable' },
-              { name: 'IF', snippet: 'IF ${1:condition} THEN\n  ${2}\nENDIF', desc: 'IF statement' },
-              { name: 'IFELSE', snippet: 'IF ${1:condition} THEN\n  ${2:true}\nELSE\n  ${3:false}\nENDIF', desc: 'IF/ELSE statement' },
-              { name: 'FOR', snippet: 'FOR @${1:i} = ${2:1} TO ${3:10} DO\n  ${4}\nNEXT', desc: 'FOR loop' },
+              { name: 'if', snippet: 'if ${1:condition} then\n  ${2}\nendif', desc: 'IF statement' },
+              { name: 'ifelse', snippet: 'if ${1:condition} then\n  ${2:true}\nelse\n  ${3:false}\nendif', desc: 'IF/ELSE statement' },
+              { name: 'for', snippet: 'for @${1:i} = ${2:1} to ${3:10} do\n  ${4}\nnext', desc: 'FOR loop' },
             ];
 
-            // Only show functions when triggered by '=' or other triggers (not @)
-            // When @ is typed, only show variables
-            const triggerChar = textBeforeCursor.slice(-1);
-            
-            if (triggerChar !== '@') {
-              functions.forEach(fn => {
-                const item = new vscode.CompletionItem(fn.name, vscode.CompletionItemKind.Function);
-                item.insertText = new vscode.SnippetString(fn.snippet);
-                item.detail = fn.desc;
-                items.push(item);
-              });
+            functions.forEach(fn => {
+              const item = new vscode.CompletionItem(fn.name, vscode.CompletionItemKind.Function);
+              item.insertText = new vscode.SnippetString(fn.snippet);
+              item.detail = fn.desc;
+              items.push(item);
+            });
 
-              // System variables (only when not triggered by @)
-              const systemVars = [
-                '_SubscriberKey', '_MessageContext', '_JobSubscriberKey',
-                '_ListID', '_CampaignID', '_TenantID', '_Language',
-                'AttributeGetValue', 'RequestParameter', 'Now', 'Today'
-              ];
-              systemVars.forEach(v => {
-                const item = new vscode.CompletionItem(v, vscode.CompletionItemKind.Variable);
-                items.push(item);
-              });
-            }
+            // SYSTEM VARIABLES (unchanged)
+            const systemVars = [
+              '_SubscriberKey', '_MessageContext', '_JobSubscriberKey',
+              '_ListID', '_CampaignID', '_TenantID', '_Language',
+              'AttributeGetValue', 'RequestParameter', 'Now', 'Today'
+            ];
 
-            // variables - only declared ones (SET @varName or VAR @varName)
-            const fullText = document.getText();
-            const declaredVars = fullText.match(/(?:SET|VAR)\s+(@\w+)/g) || [];
-            // Extract just the variable names (without @) and remove duplicates
-            const uniqueVarNames = [...new Set(declaredVars.map(v => v.replace(/^(SET|VAR)\s+/, '').substring(1)))];
+            systemVars.forEach(v => {
+              const item = new vscode.CompletionItem(v, vscode.CompletionItemKind.Variable);
+              items.push(item);
+            });
 
-           uniqueVarNames.forEach(varName => {
-              const item = new vscode.CompletionItem(varName, vscode.CompletionItemKind.Variable);
-              item.filterText = '@' + varName;
+            // ALSO SHOW VARIABLES
+            uniqueVarNames.forEach(varName => {
+              const item = new vscode.CompletionItem('@' + varName, vscode.CompletionItemKind.Variable);
+              item.insertText = varName;
               items.push(item);
             });
           }
@@ -169,12 +187,12 @@ export function activate(context: vscode.ExtensionContext) {
           return items;
         }
       },
-      '%', '=', '@', '[' // 🔥 triggers - [ handles %%[ case
+      '%', '=', '@', '['
     )
   );
 
   /**
-   * HOVER
+   * HOVER (unchanged)
    */
   context.subscriptions.push(
     vscode.languages.registerHoverProvider(['html'], {

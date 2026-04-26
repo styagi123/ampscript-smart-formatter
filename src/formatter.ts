@@ -1,5 +1,29 @@
 import { html as beautify } from 'js-beautify';
 
+// Keywords to convert to lowercase
+const lowercaseKeywords = [
+  'IF', 'THEN', 'ENDIF', 'ELSE', 'ELSEIF', 'ENDELSEIF',
+  'FOR', 'NEXT', 'ENDFOR',
+  'SET', 'VAR', 'OUTPUT', 'OUTPUTLINE',
+  'RAISE', 'REDIRECTTO', 'TREATAS',
+  'CONTENTAREA', 'CONTENTBLOCK', 'DATASOURCE',
+  'ROW', 'FIELD', 'ARRAY', 'INDEX',
+  'AND', 'OR', 'NOT', 'EMPTY', 'NULL'
+];
+
+function lowercaseAmpScript(block: string): string {
+  // Lowercase keywords
+  lowercaseKeywords.forEach(kw => {
+    const regex = new RegExp(`\\b${kw}\\b`, 'g');
+    block = block.replace(regex, kw.toLowerCase());
+  });
+  
+  // Also lowercase function names
+  block = block.replace(/\b(Lookup|Concat|Now|v|AttributeValue|RequestParameter|RequestQueryParameter|RequestCookie|Replace|RegexReplace|Format|DateAdd|DateDiff|StringToDate|DateToString|AddToString|Concat|IIF)\b/gi, (match) => match.toLowerCase());
+  
+  return block;
+}
+
 export function formatAmpScript(text: string): string {
 
   const ampBlocks: string[] = [];
@@ -16,7 +40,9 @@ export function formatAmpScript(text: string): string {
       return `__AMP_BLOCK_${index++}__`;
     }
     
-    ampBlocks.push(match);
+    // Lowercase the AMPscript content
+    const formatted = lowercaseAmpScript(match);
+    ampBlocks.push(formatted);
     return `__AMP_BLOCK_${index++}__`;
   });
 
