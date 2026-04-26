@@ -1,0 +1,83 @@
+{
+  "name": "ampscript-smart-formatter",
+  "displayName": "AMPscript Smart Formatter",
+  "description": "Format AMPscript safely and code faster with IntelliSense, validation, and seamless HTML integration.",
+  "version": "0.0.1",
+
+  "publisher": "sagartyagi",
+
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+
+  "categories": [
+    "Programming Languages",
+    "Formatters"
+  ],
+
+  "keywords": [
+    "ampscript",
+    "html",
+    "formatter",
+    "intellisense",
+    "marketing cloud",
+    "salesforce"
+  ],
+
+  "main": "./out/extension.js",
+
+  "activationEvents": [
+    "onLanguage:html"
+  ],
+
+  "contributes": {
+    "commands": [
+      {
+        "command": "ampscript.format",
+        "title": "Format AMPscript HTML"
+      }
+    ],
+
+    "languages": [
+      {
+        "id": "ampscript-html",
+        "aliases": ["AMPscript HTML"],
+        "extensions": [".ampscript", ".amp.html"]
+      }
+    ],
+
+    "grammars": [
+      {
+        "language": "ampscript-html",
+        "scopeName": "text.html.ampscript",
+        "path": "./syntaxes/ampscript-html.tmLanguage.json"
+      }
+    ],
+
+    "snippets": [
+      {
+        "language": "ampscript-html",
+        "path": "./snippets/ampscript.json"
+      }
+    ]
+  },
+
+  "scripts": {
+    "build": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "clean": "tsc --build --clean",
+    "vscode:prepublish": "npm run build"
+  },
+
+  "devDependencies": {
+    "@types/js-beautify": "^1.14.3",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0",
+    "eslint": "^9.0.0"
+  },
+
+  "dependencies": {
+    "js-beautify": "^1.15.4"
+  }
+}

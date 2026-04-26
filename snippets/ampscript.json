@@ -1,0 +1,10 @@
+{
+  "AMP Block": {
+    "prefix": "amp",
+    "body": ["%%[", "$1", "]%%"]
+  },
+  "v output": {
+    "prefix": "v",
+    "body": ["%%=v(@$1)=%%"]
+  }
+}
