@@ -3,9 +3,8 @@
   "displayName": "AMPscript Smart Formatter",
   "description": "Format AMPscript safely and code faster with IntelliSense, validation, and seamless HTML integration.",
   "version": "0.0.1",
-
   "publisher": "sagartyagi",
-
+  "icon": "icon.svg",
   "engines": {
     "vscode": "^1.85.0"
   },
